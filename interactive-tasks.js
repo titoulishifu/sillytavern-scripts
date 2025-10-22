@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MVU Status Bar Task Interaction
-// @version      1.1
-// @description  Adds click-to-input functionality for the task lists in the MVU status bar.
+// @version      1.2
+// @description  Adds click-to-input functionality for the task lists in the MVU status bar using robust event delegation.
 // @author       You
 // @match        */*
 // @grant        none
@@ -15,26 +15,20 @@
         const sendTextArea = document.getElementById('send_textarea');
         if (sendTextArea) {
             sendTextArea.value = text;
-            // Dispatch an 'input' event to make sure the UI updates (e.g., character count)
+            // Dispatch an 'input' event to make sure the UI updates
             sendTextArea.dispatchEvent(new Event('input', { bubbles: true }));
+            sendTextArea.focus();
         }
     }
 
-    // This function sets up the event listeners
+    // This function sets up the event listeners using event delegation
     function setupTaskListeners() {
-        // Use a more robust selector to ensure we are targeting the status bar's lists
-        const statusBar = document.querySelector('details > summary:first-child > span:first-child');
-        
-        // Only proceed if we are reasonably sure this is the correct status bar
-        if (!statusBar || !statusBar.textContent.includes('管家工作日志')) {
-            return;
-        }
-
         const pendingTasksList = document.getElementById('tasks-pending');
         const completedTasksList = document.getElementById('tasks-completed');
 
         // Listener for uncompleted tasks
-        if (pendingTasksList) {
+        if (pendingTasksList && !pendingTasksList.dataset.listenerAttached) {
+            pendingTasksList.dataset.listenerAttached = 'true'; // Mark as listener attached
             pendingTasksList.addEventListener('click', (event) => {
                 const taskItem = event.target.closest('li');
                 if (taskItem) {
@@ -45,10 +39,12 @@
                     }
                 }
             });
+            console.log("MVU Interaction: Listener attached to PENDING tasks.");
         }
 
         // Listener for completed tasks
-        if (completedTasksList) {
+        if (completedTasksList && !completedTasksList.dataset.listenerAttached) {
+            completedTasksList.dataset.listenerAttached = 'true'; // Mark as listener attached
             completedTasksList.addEventListener('click', (event) => {
                 const taskItem = event.target.closest('li');
                 if (taskItem) {
@@ -59,24 +55,29 @@
                     }
                 }
             });
+            console.log("MVU Interaction: Listener attached to COMPLETED tasks.");
         }
     }
 
-    // We need to wait for the status bar to be loaded into the DOM.
-    // A simple way is to use a MutationObserver to watch for the element to appear.
-    const observer = new MutationObserver((mutations, obs) => {
-        // We check for 'tasks-pending' as it's a unique ID within your status bar.
-        if (document.getElementById('tasks-pending')) {
-            console.log("MVU Status Bar detected. Attaching task listeners.");
-            setupTaskListeners();
-            obs.disconnect(); // Stop observing once we've found it and set up the listeners.
+    // Use a MutationObserver to watch for when the status bar is added to the DOM or re-rendered.
+    // This is more robust than a one-time check or an interval.
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            // Check if nodes were added
+            if (mutation.addedNodes.length) {
+                // Run the setup function to check for the lists and attach listeners if needed
+                setupTaskListeners();
+            }
         }
     });
 
-    // Start observing the document body for added nodes
+    // Start observing the entire document for changes to its structure.
     observer.observe(document.body, {
-        childList: true,
-        subtree: true
+        childList: true, // Observe direct children being added or removed
+        subtree: true    // Observe all descendants
     });
+
+    // Also run it once on script start, in case the elements are already there.
+    setupTaskListeners();
 
 })();
