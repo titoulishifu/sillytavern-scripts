@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>封面遮罩缩放修复示例</title>
+<style>
+:root {
+  --cover-height: 60vh;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { min-height: 100vh; background: #07090f; color: #e2e8f0; }
+
+.fullscreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#cover-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--cover-height);
+  overflow: hidden;
+  z-index: 50;
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+/* 关键修复：遮罩层跟随父容器尺寸，而不是视口 */
+#cover-screen .cover-blur-layer,
+#cover-screen .cover-sharp-layer,
+#cover-screen .cover-overlay {
+  position: absolute;
+  inset: 0; /* 等价 top/right/bottom/left:0，确保被父级60vh裁剪 */
+  width: 100%;
+  height: 100%;
+}
+
+.cover-blur-layer,
+.cover-sharp-layer {
+  background: url('https://i.postimg.cc/Sx6dpWyx/883c9b417e22c7833c852486fac8ccf6.jpg') center/cover no-repeat;
+}
+
+.cover-blur-layer { filter: blur(12px) brightness(0.6); }
+
+.cover-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.8) 100%);
+}
+
+#main-screen {
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease;
+}
+
+#main-screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.main-overlay {
+  min-height: 100vh;
+  background: rgba(5, 8, 15, 0.75);
+  padding: 2rem;
+}
+
+button { padding: 0.6rem 1rem; }
+</style>
+</head>
+<body>
+<div id="cover-screen" class="fullscreen">
+  <div class="cover-blur-layer"></div>
+  <div class="cover-sharp-layer"></div>
+  <div class="cover-overlay">
+    <button id="enter-btn">进入主界面</button>
+  </div>
+</div>
+
+<div id="main-screen" class="fullscreen">
+  <div class="main-overlay">主界面内容</div>
+</div>
+
+<script>
+const coverScreen = document.getElementById('cover-screen');
+const mainScreen = document.getElementById('main-screen');
+
+// 关键修复：不再先扩展到100vh，避免出现“遮罩不跟着缩放”的视觉错位
+// 若你希望全流程都保持60%高度，直接淡出封面即可。
+document.getElementById('enter-btn').addEventListener('click', () => {
+  coverScreen.style.opacity = '0';
+  coverScreen.style.transform = 'translateY(-8px)';
+  coverScreen.style.pointerEvents = 'none';
+  setTimeout(() => mainScreen.classList.add('active'), 300);
+});
+</script>
+</body>
+</html>
